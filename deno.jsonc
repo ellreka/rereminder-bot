@@ -1,0 +1,12 @@
+{
+  "importMap": "import_map.json",
+  "fmt": {
+    "files": {
+      "exclude": ["node_modules", ".history"]
+    },
+    "options": {
+      "useTabs": false,
+      "singleQuote": false
+    }
+  }
+}
