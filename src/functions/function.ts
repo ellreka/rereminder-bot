@@ -5,153 +5,97 @@ import {
   SlackFunction,
 } from "deno-slack-sdk/mod.ts";
 import { SlackAPI } from "deno-slack-api/mod.ts";
-import { SlackApiSearchMessagesResponse } from "../types/types.ts";
-import { BaseResponse } from "https://deno.land/x/deno_slack_api@1.0.1/types.ts";
-import {
-  DATASTORE_NAME,
-  MessageDatastore,
-  ThreadDatastore,
-} from "../datastore.ts";
-import { insertBetween } from "../utils.ts";
-import env from "../../env.ts";
+import { DATASTORE_NAME, MessageDatastore } from "../datastore.ts";
+import { MessagesType } from "../types/messages.ts";
 
 export const FunctionDefinition = DefineFunction({
   callback_id: "function",
-  title: "Sample function",
-  description: "A sample function",
+  title: "Post message function",
+  description: "",
   source_file: "src/functions/function.ts",
   input_parameters: {
     properties: {
       userId: {
         type: Schema.slack.types.user_id,
       },
+      messages: {
+        type: MessagesType,
+      },
     },
-    required: ["userId"],
+    required: ["userId", "messages"],
   },
 });
 
 export default SlackFunction(
   FunctionDefinition,
   async ({ inputs, token }) => {
-    const userClient = SlackAPI(
-      env.SLACK_USER_TOKEN,
-    );
-    const botClient = SlackAPI(token);
+    const client = SlackAPI(token);
 
-    const messagesResponse: BaseResponse & SlackApiSearchMessagesResponse =
-      await userClient.search.messages({
-        query: inputs.userId,
-        sort: "timestamp",
-        sort_dir: "desc",
-        count: 10,
-      });
-
-    const messageDatastore = await botClient.apps.datastore.query<
-      typeof MessageDatastore.definition
-    >({
-      datastore: DATASTORE_NAME.message,
-      expression: "#userId = :userId",
-      expression_attributes: { "#userId": "userId" },
-      expression_values: { ":userId": inputs.userId },
-    });
-
-    const resolvedMessageIds = messageDatastore.items.map<string>((item) =>
-      item.messageId
-    );
-
-    if (!messagesResponse.ok) {
-      console.log(messagesResponse.error);
-    }
-
-    const messages = messagesResponse?.messages?.matches.filter((
-      match,
-    ) => {
-      const resolved = resolvedMessageIds.includes(match.ts);
-      const noReactions = match?.no_reactions === true;
-      return !(resolved || !noReactions);
-    }).map((match) => {
-      return {
-        ...match,
-      };
-    });
-
-    if (messages == null || messages.length === 0) {
-      const postMsgResponse = await botClient.chat.postMessage({
+    if (inputs.messages == null || inputs.messages.length === 0) {
+      const postMsgResponse = await client.chat.postMessage({
         channel: inputs.userId,
-        text: messages == null
+        text: inputs.messages == null
           ? "Error: messages is null"
           : "All messages have been resolved:tada:",
       });
       if (!postMsgResponse.ok) {
         console.log(postMsgResponse.error);
       }
-      return {
-        completed: true,
-        outputs: {},
-      };
     }
 
-    const actionBlocks = messages.reverse().map((message) => {
+    const actionBlocks = inputs.messages.map((message) => {
       return [
         {
-          type: "actions",
-          elements: [
-            {
-              type: "checkboxes",
-              action_id: "check_message",
-              options: [
-                {
-                  text: {
-                    type: "mrkdwn",
-                    text: `@${message.username} #${message.channel.name}`,
-                  },
-                  value: message.ts,
-                  description: {
-                    type: "mrkdwn",
-                    text: `${message.text.substring(0, 140)}${
-                      message.text.length > 140 ? "..." : ""
-                    }`,
-                  },
-                },
-              ],
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": `from:@${message.username} in:#${message.channelName}`,
+          },
+          "accessory": {
+            "type": "button",
+            "text": {
+              "type": "plain_text",
+              "emoji": true,
+              "text": "Resolve",
             },
-          ],
+            "style": "primary",
+            "action_id": "resolve_message",
+            "value": `${message.ts}`,
+          },
         },
         {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: `<${message.permalink}|➡message link>`,
-          },
+          "type": "context",
+          "elements": [
+            {
+              "text": `${message.text.substring(0, 140)}${
+                message.text.length > 140 ? "..." : ""
+              }\n<${message.permalink}|:link: message link>`,
+              "type": "mrkdwn",
+            },
+          ],
         },
       ];
     });
 
-    const blocks = [
-      ...insertBetween(actionBlocks, {
-        type: "divider",
-      }).flat(),
-    ];
+    const generateRandomColor = () => {
+      return `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+    };
 
-    const threadDatastore = await botClient.apps.datastore.get<
-      typeof ThreadDatastore.definition
-    >({
-      datastore: DATASTORE_NAME.thread,
-      userId: inputs.userId,
-    });
-
-    console.log("threadDatastore", threadDatastore.item.threadId);
-
-    const postMsgResponse = await botClient.chat.postMessage({
+    const postMsgResponse = await client.chat.postMessage({
       channel: inputs.userId,
       attachments: [
-        {
-          color: "#3AA3E3",
-          blocks,
-        },
+        ...actionBlocks.map((block) => {
+          return {
+            color: generateRandomColor(),
+            blocks: block,
+          };
+        }),
       ],
     });
-    console.log("postMsgResponse", postMsgResponse.ts);
+
+    if (!postMsgResponse.ok) {
+      console.log(postMsgResponse);
+    }
 
     return {
       completed: false,
@@ -161,36 +105,56 @@ export default SlackFunction(
 
 const ActionsRouter = BlockActionsRouter(FunctionDefinition);
 export const blockActions = ActionsRouter.addHandler(
-  ["check_message"],
+  ["resolve_message"],
   async ({ action, token, body, inputs }) => {
-    console.log(action);
     const client = SlackAPI(token);
-    const uuid = crypto.randomUUID();
+
+    // deleteAllDatastore(client, DATASTORE_NAME.message);
+    const messageDatastore = await client.apps.datastore.get<
+      typeof MessageDatastore.definition
+    >({
+      datastore: DATASTORE_NAME.message,
+      id: inputs.userId,
+    });
+
+    const resolvedMessageIds = [
+      ...messageDatastore.item.messageIds.split(","),
+      action.value,
+    ];
 
     const putMsgResponse = await client.apps.datastore.put<
       typeof MessageDatastore.definition
     >({
       datastore: DATASTORE_NAME.message,
       item: {
-        id: uuid,
-        messageId: action.selected_options[0].value,
-        userId: inputs.userId,
+        id: inputs.userId,
+        messageIds: resolvedMessageIds.join(","),
       },
     });
 
     if (!putMsgResponse.ok) {
-      console.log("Error calling apps.datastore.put:");
-      return {
-        error: putMsgResponse.error,
-        outputs: {},
-      };
-    } else {
-      console.log("Datastore put successful!");
       console.log(putMsgResponse);
       return {
         outputs: {},
       };
     }
+
+    const attachments = body.message.attachments.filter((attachment: any) => {
+      return !attachment.blocks.some((block: any) => {
+        return block.accessory?.value === action.value;
+      });
+    });
+
+    const _updateMsgResponse = await client.chat.update({
+      channel: body.container.channel_id,
+      ts: body.message.ts,
+      attachments: attachments.length > 0 ? attachments : undefined,
+      text: attachments.length > 0
+        ? undefined
+        : "All messages have been resolved:tada:",
+    });
+    console.log("Datastore put successful!");
+
     // await client.functions.completeSuccess({
     //   function_execution_id: body.function_data.execution_id,
     //   outputs: {},

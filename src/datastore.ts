@@ -10,25 +10,9 @@ export const MessageDatastore = DefineDatastore({
   primary_key: "id",
   attributes: {
     id: {
-      type: Schema.types.string,
+      type: Schema.slack.types.user_id,
     },
-    messageId: {
-      type: Schema.types.string,
-    },
-    userId: {
-      type: Schema.types.string,
-    },
-  },
-});
-
-export const ThreadDatastore = DefineDatastore({
-  name: DATASTORE_NAME.thread,
-  primary_key: "userId",
-  attributes: {
-    userId: {
-      type: Schema.types.string,
-    },
-    threadId: {
+    messageIds: {
       type: Schema.types.string,
     },
   },

@@ -40,3 +40,29 @@ export type SlackApiSearchMessagesResponse = {
     }>;
   };
 };
+
+export type SlackApiConversationsRepliesResponse = {
+  "ok": boolean;
+  "messages"?: Array<{
+    "client_msg_id": string;
+    "type": string;
+    "text": string;
+    "user": string;
+    "ts": string;
+    "team": string;
+    "blocks": Array<{
+      "type": string;
+      "block_id": string;
+      "elements": [];
+    }>;
+    "thread_ts": string;
+    "parent_user_id": string;
+    "reply_count"?: number;
+    "reply_users_count"?: number;
+    "reactions": Array<{
+      "name": string;
+      "users": string[];
+      "count": number;
+    }>;
+  }>;
+};
