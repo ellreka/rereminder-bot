@@ -1,24 +1,26 @@
 import { Manifest, SlackManifestType } from "deno-slack-sdk/mod.ts";
-import { MessageDatastore } from "./src/datastore.ts";
+import env from "./env.ts";
+import { MessageDatastore, TokenDatastore } from "./src/datastore.ts";
 import { MessagesType } from "./src/types/messages.ts";
+import TokenWorkflow from "./src/workflows/tokenWorkflow.ts";
 import Workflow from "./src/workflows/workflow.ts";
 
 const definition: SlackManifestType = {
   runOnSlack: false,
   name: "rereminder-bot",
-  description: "A template for building Slack apps with Deno",
+  description: "",
   icon: "assets/icon.png",
-  workflows: [Workflow],
+  workflows: [Workflow, TokenWorkflow],
   types: [MessagesType],
   outgoingDomains: [],
-  datastores: [MessageDatastore],
+  datastores: [MessageDatastore, TokenDatastore],
   features: {
     appHome: {
       messagesTabEnabled: true,
       messagesTabReadOnlyEnabled: true,
     },
   },
-  redirectUrls: ["https://oauth2.slack.com/external/auth/callback"],
+  redirectUrls: [env.REDIRECT_URL],
   botScopes: [
     "commands",
     "chat:write",

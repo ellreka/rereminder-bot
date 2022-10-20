@@ -1,7 +1,6 @@
 import { DefineWorkflow, Schema } from "deno-slack-sdk/mod.ts";
 import { FunctionDefinition } from "../functions/function.ts";
 import { SearchFunctionDefinition } from "../functions/search.ts";
-import env from "../../env.ts";
 
 const Workflow = DefineWorkflow({
   callback_id: "workflow",
@@ -19,7 +18,6 @@ const Workflow = DefineWorkflow({
 
 const search = Workflow.addStep(SearchFunctionDefinition, {
   userId: Workflow.inputs.userId,
-  userToken: env.SLACK_USER_TOKEN,
 });
 
 Workflow.addStep(FunctionDefinition, {

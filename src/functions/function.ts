@@ -118,8 +118,8 @@ export const blockActions = ActionsRouter.addHandler(
     });
 
     const resolvedMessageIds = [
-      ...messageDatastore.item.messageIds.split(","),
       action.value,
+      ...messageDatastore.item.messageIds.split(",").splice(0, 19),
     ];
 
     const putMsgResponse = await client.apps.datastore.put<
@@ -139,18 +139,20 @@ export const blockActions = ActionsRouter.addHandler(
       };
     }
 
-    const attachments = body.message.attachments.filter((attachment: any) => {
-      return !attachment.blocks.some((block: any) => {
-        return block.accessory?.value === action.value;
-      });
-    });
+    const attachments = (body?.message as any)?.attachments.filter(
+      (attachment: any) => {
+        return !attachment.blocks.some((block: any) => {
+          return block.accessory?.value === action.value;
+        });
+      },
+    );
 
     const _updateMsgResponse = await client.chat.update({
       channel: body.container.channel_id,
-      ts: body.message.ts,
+      ts: body.message?.ts,
       attachments: attachments.length > 0 ? attachments : undefined,
       text: attachments.length > 0
-        ? undefined
+        ? ""
         : "All messages have been resolved:tada:",
     });
     console.log("Datastore put successful!");

@@ -4,8 +4,12 @@ import {
   SlackApiConversationsRepliesResponse,
   SlackApiSearchMessagesResponse,
 } from "../types/types.ts";
-import { BaseResponse } from "https://deno.land/x/deno_slack_api@1.0.1/types.ts";
-import { DATASTORE_NAME, MessageDatastore } from "../datastore.ts";
+import { BaseResponse } from "deno-slack-api/types.ts";
+import {
+  DATASTORE_NAME,
+  MessageDatastore,
+  TokenDatastore,
+} from "../datastore.ts";
 import { MessagesType } from "../types/messages.ts";
 
 export const SearchFunctionDefinition = DefineFunction({
@@ -18,11 +22,8 @@ export const SearchFunctionDefinition = DefineFunction({
       userId: {
         type: Schema.slack.types.user_id,
       },
-      userToken: {
-        type: Schema.types.string,
-      },
     },
-    required: ["userId", "userToken"],
+    required: ["userId"],
   },
   output_parameters: {
     properties: {
@@ -42,8 +43,24 @@ const repliesCache = new Map<
 export default SlackFunction(
   SearchFunctionDefinition,
   async ({ inputs, token }) => {
-    const userClient = SlackAPI(inputs.userToken);
     const botClient = SlackAPI(token);
+
+    const getTokenDatastore = await botClient.apps.datastore.get<
+      typeof TokenDatastore.definition
+    >({
+      datastore: DATASTORE_NAME.token,
+      id: inputs.userId,
+    });
+
+    if (!getTokenDatastore.ok) {
+      console.error(getTokenDatastore);
+      throw new Error("Failed to get token");
+    }
+
+    const userToken: string = getTokenDatastore.item.token;
+    console.log(userToken);
+
+    const userClient = SlackAPI(userToken);
 
     const messagesResponse: BaseResponse & SlackApiSearchMessagesResponse =
       await userClient.search.messages({
@@ -52,6 +69,11 @@ export default SlackFunction(
         sort_dir: "desc",
         count: 20,
       });
+
+    if (!messagesResponse.ok) {
+      console.error(messagesResponse);
+      throw new Error("Failed to search messages");
+    }
 
     const messageDatastore = await botClient.apps.datastore.get<
       typeof MessageDatastore.definition
