@@ -6,7 +6,7 @@ import TokenWorkflow from "./src/workflows/tokenWorkflow.ts";
 import Workflow from "./src/workflows/workflow.ts";
 
 const definition: SlackManifestType = {
-  runOnSlack: false,
+  runOnSlack: true,
   name: "rereminder-bot",
   description: "",
   icon: "assets/icon.png",
@@ -20,6 +20,7 @@ const definition: SlackManifestType = {
       messagesTabReadOnlyEnabled: true,
     },
   },
+  // @ts-ignore
   redirectUrls: [env.REDIRECT_URL],
   botScopes: [
     "commands",
