@@ -2,4 +2,5 @@ dist
 package
 .DS_Store
 .slack/*
-env.ts
+.env
+node_modules
