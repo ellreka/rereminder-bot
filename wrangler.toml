@@ -1,0 +1,4 @@
+name = "rereminder-bot"
+main = "dist/index.js"
+node_compat = true
+compatibility_date = "2022-12-17"
