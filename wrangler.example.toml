@@ -1,0 +1,14 @@
+name = "rereminder-bot"
+main = "src/index.ts"
+compatibility_date = "2022-12-17"
+
+[[kv_namespaces]]
+binding = "TOKEN_KV"
+id = ""
+preview_id = ""
+
+[vars]
+SLACK_BOT_TOKEN= ""
+SLACK_CLIENT_ID= ""
+SLACK_CLIENT_SECRET= ""
+SLACK_SHAREABLE_URL= ""

@@ -1,7 +1,0 @@
-name = "rereminder-bot"
-main = "src/index.ts"
-node_compat = true
-compatibility_date = "2022-12-17"
-kv_namespaces = [
-  { binding = "TOKEN_KV", id = "4c05aa3dc78046009ea894c64666d02f", preview_id = "894355cb40f74205bd5b01a1b6b7790a" }
-]

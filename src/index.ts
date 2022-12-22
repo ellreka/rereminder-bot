@@ -7,6 +7,7 @@ type Bindings = {
   SLACK_BOT_TOKEN: string;
   SLACK_CLIENT_ID: string;
   SLACK_CLIENT_SECRET: string;
+  SLACK_SHAREABLE_URL: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
@@ -17,8 +18,7 @@ app.post("/rere", async (c) => {
 
   const kv = c.env.TOKEN_KV;
   const token = await kv.get(user_id);
-  console.log(token, user_id);
-  if (token == null) return c.text("Not authenticated", 500);
+  if (token == null) return c.text(`Not authenticated.\n${c.env.SLACK_SHAREABLE_URL}`);
   try {
     await sendMissedMessages({
       userId: user_id,
@@ -50,8 +50,6 @@ app.get("/auth", async (c) => {
   if (authed_user?.id && authed_user.access_token) {
     await kv.put(authed_user.id, authed_user.access_token);
   }
-  const value = await kv.get("UK6UWRVNZ");
-  console.log(value);
   return c.text("success!");
 });
 
