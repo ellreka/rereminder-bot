@@ -1,5 +1,5 @@
 const esbuild = require("esbuild");
-const { commonjs } = require("@hyrious/esbuild-plugin-commonjs");
+// const { commonjs } = require("@hyrious/esbuild-plugin-commonjs");
 
 esbuild
   .build({
@@ -13,7 +13,7 @@ esbuild
     define: {
       "process.env.NODE_ENV": `"${process.env.NODE_ENV}"`,
     },
-    external: ["@slack/bolt"],
+    // external: ["@slack/bolt"],
     // plugins: [commonjs()],
   })
   .catch(() => process.exit(1));
