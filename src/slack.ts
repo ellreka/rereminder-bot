@@ -5,6 +5,8 @@ import {
   SearchMessagesResponse,
   ChatPostMessageArguments,
   ChatPostMessageResponse,
+  OAuthV2AccessArguments,
+  OauthV2AccessResponse,
 } from "@slack/web-api";
 
 const BASE_URL = "https://slack.com/api/";
@@ -22,6 +24,10 @@ type APIS = {
     args: ChatPostMessageArguments;
     response: ChatPostMessageResponse;
   };
+  // "oauth.v2.access": {
+  //   args: OAuthV2AccessArguments;
+  //   response: OauthV2AccessResponse;
+  // };
 };
 
 const methods: Record<keyof APIS, { method: "GET" | "POST" }> = {
@@ -56,5 +62,24 @@ export const fetcher = async <T extends keyof APIS>(
     headers,
     body: method === "POST" ? JSON.stringify(args) : undefined,
   });
+  if(!res.ok) throw new Error(res.statusText);
   return res.json();
+};
+
+export const oauth = async (
+  args: OAuthV2AccessArguments
+): Promise<OauthV2AccessResponse> => {
+  if (args.code == null) throw new Error("code is required");
+  const response = await fetch("https://slack.com/api/oauth.v2.access", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      client_id: args.client_id,
+      client_secret: args.client_secret,
+      code: args.code,
+    }),
+  });
+  return response.json();
 };

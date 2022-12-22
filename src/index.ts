@@ -1,49 +1,58 @@
 import { Hono } from "hono";
-import { validator } from "hono/validator";
 import { sendMissedMessages } from "./functions";
+import { oauth } from "./slack";
 
-const app = new Hono();
-
-app.post(
-  "*",
-  // validator(
-  //   (v, c) => () => {
-  //     return {
-  //       token: v.body("token").isEqual(c.env.SLACK_TOKEN),
-  //       text: v.body("text").isRequired(),
-  //     };
-  //   },
-  //   {
-  //     done: (result, c) => {
-  //       if (result.hasError) {
-  //         console.log(result.messages);
-  //       }
-  //     },
-  //   }
-  // ),
-  async (c) => {
-    // const res = c.req.valid()
-    // console.log(res);
-    console.log(c);
-    // const result = parse(res.text)
-    // await sendMissedMessages({
-    //   userId: "UK6UWRVNZ",
-    //   userToken: c.env.SLACK_USER_TOKEN,
-    //   botToken: c.env.SLACK_BOT_TOKEN,
-    //   channel: c.env.SLACK_CHANNEL_ID,
-    // })
-    // return c.text("Hello! Hono!");
-    return c.text("");
-  }
-);
-
-const parse = (text: string) => {
-  const regex = /^([0-9a-zA-Z]+)(\+\+|\-\-)/;
-  const result = text.trim().match(regex);
-  if (!result) return null;
-  const name = result[1];
-  const operation = result[2];
-  return { name, operation };
+type Bindings = {
+  TOKEN_KV: KVNamespace;
+  SLACK_BOT_TOKEN: string;
+  SLACK_CLIENT_ID: string;
+  SLACK_CLIENT_SECRET: string;
 };
+
+const app = new Hono<{ Bindings: Bindings }>();
+
+app.post("/rere", async (c) => {
+  const query = await c.req.parseBody<{ user_id: string }>();
+  const { user_id } = query;
+
+  const kv = c.env.TOKEN_KV;
+  const token = await kv.get(user_id);
+  console.log(token, user_id);
+  if (token == null) return c.text("Not authenticated", 500);
+  try {
+    await sendMissedMessages({
+      userId: user_id,
+      userToken: token,
+      botToken: c.env.SLACK_BOT_TOKEN,
+      channel: user_id,
+    });
+    return c.text("");
+  } catch (e) {
+    throw e;
+  }
+});
+
+app.get("/auth", async (c) => {
+  const { code } = c.req.query();
+  console.log({ code });
+  if (code == null) {
+    return c.notFound();
+  }
+  const response = await oauth({
+    client_id: c.env.SLACK_CLIENT_ID,
+    client_secret: c.env.SLACK_CLIENT_SECRET,
+    code,
+  });
+  if (!response.ok) return c.notFound();
+
+  const kv = c.env.TOKEN_KV;
+  const { authed_user } = response;
+  if (authed_user?.id && authed_user.access_token) {
+    await kv.put(authed_user.id, authed_user.access_token);
+  }
+  const value = await kv.get("UK6UWRVNZ");
+  console.log(value);
+  return c.text("success!");
+});
 
 export default app;

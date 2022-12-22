@@ -156,7 +156,6 @@ export const sendMissedMessages = async ({
   channel: string;
 }) => {
   const messages = await searchMessage(userId, userToken);
-  console.log(messages);
   const attachments = generateAttachmentsMessage(messages);
   const res = await fetcher("chat.postMessage", {
     token: botToken,
@@ -164,5 +163,4 @@ export const sendMissedMessages = async ({
     attachments,
     text: "",
   });
-  console.log(res);
 };

@@ -5,8 +5,8 @@
   "main": "src/index.ts",
   "scripts": {
     "build": "node esbuild.js",
-    "dev": "wrangler dev",
-    "publish": "wrangler publish src/index.ts"
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler publish"
   },
   "engines": {
     "node": ">=18.0.0"
