@@ -1,9 +1,8 @@
-import { App } from "@slack/bolt";
 import {
   ConversationsRepliesResponse,
   MessageAttachment,
 } from "@slack/web-api";
-import { env } from "./env";
+import { fetcher } from "./slack";
 import { asyncFilter } from "./utils";
 
 type Message = {
@@ -16,13 +15,13 @@ type Message = {
 
 const repliesCache = new Map<string, ConversationsRepliesResponse>();
 
-const searchMessage = async (app: App, userId: string) => {
-  const response = await app.client.search.messages({
+const searchMessage = async (userId: string, token: string) => {
+  const response = await fetcher("search.messages", {
     query: userId,
     sort: "timestamp",
     sort_dir: "desc",
     count: 20,
-    token: env.SLACK_USER_TOKEN,
+    token,
   });
 
   if (!response.ok) throw response.error;
@@ -32,10 +31,10 @@ const searchMessage = async (app: App, userId: string) => {
     if (repliesCache.has(key)) {
       return repliesCache.get(key)?.messages;
     } else {
-      const response = await app.client.conversations.replies({
+      const response = await fetcher("conversations.replies", {
         channel,
         ts,
-        token: env.SLACK_USER_TOKEN,
+        token,
       });
       repliesCache.set(key, response);
       return response.messages;
@@ -145,12 +144,25 @@ const generateAttachmentsMessage = (
   return attachments;
 };
 
-export const sendMissedMessages = async (app: App, userId: string) => {
-  const messages = await searchMessage(app, userId);
+export const sendMissedMessages = async ({
+  userToken,
+  botToken,
+  userId,
+  channel,
+}: {
+  userToken: string;
+  botToken: string;
+  userId: string;
+  channel: string;
+}) => {
+  const messages = await searchMessage(userId, userToken);
+  console.log(messages);
   const attachments = generateAttachmentsMessage(messages);
-  await app.client.chat.postMessage({
-    channel: env.SLACK_CHANNEL_ID,
+  const res = await fetcher("chat.postMessage", {
+    token: botToken,
+    channel,
     attachments,
     text: "",
   });
+  console.log(res);
 };

@@ -4,3 +4,4 @@ package
 .slack/*
 .env
 node_modules
+.dev.vars
