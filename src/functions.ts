@@ -46,10 +46,18 @@ const searchMessage = async (userId: string, token: string) => {
   const filteringMessages = await asyncFilter(matches, async (match) => {
     if (match.channel?.id != null && match.ts != null) {
       const replies = await getReplies(match.channel?.id, match.ts);
+      // const thread_ts = match.permalink
+      //   ? new URL(match.permalink).searchParams.get("thread_ts")
+      //   : null;
+
+      // const replies = await getReplies(
+      //   match.channel?.id,
+      //   thread_ts ?? match.ts
+      // );
 
       if (replies == null) return false;
 
-      const reactions = replies?.find(
+      const reactions = replies.find(
         (reply) => reply.ts === match.ts
       )?.reactions;
 
@@ -60,25 +68,22 @@ const searchMessage = async (userId: string, token: string) => {
 
       if (isReacted) return false;
 
-      const parentMessage = replies[0];
-      const isParentThread = parentMessage.thread_ts === match.ts;
-
-      if (isParentThread) {
+      const targetMessage = replies.find((reply) => reply.ts === match.ts);
+      if (targetMessage?.thread_ts == null) {
         const targetIndex = replies.findIndex((reply) => reply.ts === match.ts);
         const isReplied = replies[targetIndex + 1]?.user === userId;
-        return !isReplied;
+        return !isReplied && !isReacted;
       } else {
-        if (parentMessage.thread_ts == null) return false;
-        const parentThreads = await getReplies(
+        const parentThreadReplies = await getReplies(
           match.channel?.id,
-          parentMessage.thread_ts
+          targetMessage.thread_ts
         );
-        if (parentThreads == null) return false;
-        const targetIndex = parentThreads.findIndex(
+        if (parentThreadReplies == null) return false;
+        const targetIndex = parentThreadReplies.findIndex(
           (reply) => reply.ts === match.ts
         );
-        const isReplied = parentThreads[targetIndex + 1]?.user === userId;
-        return !isReplied;
+        const isReplied = parentThreadReplies[targetIndex + 1]?.user === userId;
+        return !isReplied && !isReacted;
       }
     }
     return false;
@@ -156,11 +161,12 @@ export const sendMissedMessages = async ({
   channel: string;
 }) => {
   const messages = await searchMessage(userId, userToken);
+  const text = messages.length === 0 ? "No missed messages" : "";
   const attachments = generateAttachmentsMessage(messages);
   const res = await fetcher("chat.postMessage", {
     token: botToken,
     channel,
     attachments,
-    text: "",
+    text,
   });
 };

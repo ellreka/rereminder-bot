@@ -34,7 +34,6 @@ app.post("/rere", async (c) => {
 
 app.get("/auth", async (c) => {
   const { code } = c.req.query();
-  console.log({ code });
   if (code == null) {
     return c.notFound();
   }
