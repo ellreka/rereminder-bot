@@ -3,9 +3,8 @@ main = "src/index.ts"
 compatibility_date = "2022-12-17"
 
 [[kv_namespaces]]
-binding = "TOKEN_KV"
+binding = "USER_KV"
 id = ""
-preview_id = ""
 
 [vars]
 SLACK_BOT_TOKEN= ""

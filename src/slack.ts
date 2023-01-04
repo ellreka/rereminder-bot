@@ -1,4 +1,4 @@
-import {
+import type {
   ConversationsRepliesResponse,
   ConversationsRepliesArguments,
   SearchMessagesArguments,
@@ -8,7 +8,7 @@ import {
   OAuthV2AccessArguments,
   OauthV2AccessResponse,
   ChatUpdateArguments,
-  ChatUpdateResponse
+  ChatUpdateResponse,
 } from "@slack/web-api";
 
 const BASE_URL = "https://slack.com/api/";
@@ -30,10 +30,6 @@ type APIS = {
     args: ChatUpdateArguments;
     response: ChatUpdateResponse;
   };
-  // "oauth.v2.access": {
-  //   args: OAuthV2AccessArguments;
-  //   response: OauthV2AccessResponse;
-  // };
 };
 
 const methods: Record<keyof APIS, { method: "GET" | "POST" }> = {
@@ -69,7 +65,7 @@ export const fetcher = async <T extends keyof APIS>(
     headers,
     body: method === "POST" ? JSON.stringify(args) : undefined,
   });
-  if(!res.ok) throw new Error(res.statusText);
+  if (!res.ok) throw new Error(res.statusText);
   return res.json();
 };
 

@@ -15,7 +15,11 @@ type Message = {
 
 const repliesCache = new Map<string, ConversationsRepliesResponse>();
 
-const searchMessage = async (userId: string, token: string) => {
+const searchMessage = async (
+  userId: string,
+  token: string,
+  resolvedIds: string[]
+) => {
   const response = await fetcher("search.messages", {
     query: userId,
     sort: "timestamp",
@@ -45,6 +49,8 @@ const searchMessage = async (userId: string, token: string) => {
 
   const filteringMessages = await asyncFilter(matches, async (match) => {
     if (match.channel?.id != null && match.ts != null) {
+      if (resolvedIds.includes(match.ts)) return false;
+      if (match.text?.includes(userId) === false) return false;
       const replies = await getReplies(match.channel?.id, match.ts);
       // const thread_ts = match.permalink
       //   ? new URL(match.permalink).searchParams.get("thread_ts")
@@ -154,13 +160,15 @@ export const sendMissedMessages = async ({
   botToken,
   userId,
   channel,
+  resolvedIds,
 }: {
   userToken: string;
   botToken: string;
   userId: string;
   channel: string;
+  resolvedIds: string[];
 }) => {
-  const messages = await searchMessage(userId, userToken);
+  const messages = await searchMessage(userId, userToken, resolvedIds);
   const text = messages.length === 0 ? "No missed messages" : "";
   const attachments = generateAttachmentsMessage(messages);
   const res = await fetcher("chat.postMessage", {
@@ -169,4 +177,35 @@ export const sendMissedMessages = async ({
     attachments,
     text,
   });
+  console.log(res);
+};
+
+export const resolveMessage = async ({
+  botToken,
+  payload,
+}: {
+  botToken: string;
+  payload: any;
+}) => {
+  try {
+    const attachments = payload.message.attachments.filter(
+      (attachment: any) => {
+        return !attachment.blocks.some((block: any) => {
+          return block.accessory?.value === payload.actions[0].value;
+        });
+      }
+    );
+
+    const res = await fetcher("chat.update", {
+      token: botToken,
+      channel: payload.channel.id,
+      ts: payload.message.ts,
+      attachments: attachments.length > 0 ? attachments : [],
+      text:
+        attachments.length > 0 ? "" : "All messages have been resolved:tada:",
+    });
+    console.log(res);
+  } catch (e) {
+    console.error(e);
+  }
 };
